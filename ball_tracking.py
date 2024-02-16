@@ -21,9 +21,41 @@ args = vars(ap.parse_args())
 
 # define the lower and upper boundaries of the "green"
 # ball in the HSV color space, then initialize the
+
+
+def nothing(x):
+    pass
+def save(x):
+    if(x==1):
+        Thresh1 = np.array([lh,ls,lv])
+        Thresh2 = np.array([uh,hs,hv])
+        print(Thresh1)
+        print(Thresh2)
+
+cv2.namedWindow("HSV")
+cv2.createTrackbar("lh", "HSV",0, 179, nothing);
+cv2.createTrackbar("ls", "HSV",0, 255, nothing);
+cv2.createTrackbar("lv", "HSV",0, 255, nothing);
+cv2.createTrackbar("uh", "HSV",179, 179, nothing);
+cv2.createTrackbar("hs", "HSV",255, 255, nothing);
+cv2.createTrackbar("hv", "HSV",255, 255, nothing);
+cv2.createTrackbar("save","HSV",0,1,save);
+
+cv2.setTrackbarPos('lh',"HSV",36)
+cv2.setTrackbarPos('ls',"HSV",80)
+cv2.setTrackbarPos('lv',"HSV",58)
+cv2.setTrackbarPos('uh',"HSV",44)
+cv2.setTrackbarPos('hs',"HSV",219)
+cv2.setTrackbarPos('hv',"HSV",255)
+
 # list of tracked points
 greenLower = (29, 86, 6)
+greenLower = (34, 50, 50)
 greenUpper = (64, 255, 255)
+greenUpper = (42, 255, 255)
+#these are actually half of values from something like this
+#https://colorpicker.me/#4e6b19
+
 pts = deque(maxlen=args["buffer"])
 
 # if a video path was not supplied, grab the reference
@@ -53,16 +85,34 @@ while True:
 
 	# resize the frame, blur it, and convert it to the HSV
 	# color space
-	frame = imutils.resize(frame, width=600)
-	blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+	frame = imutils.resize(frame, width=1080)
+#	print(frame.shape)
+	# Cropping an image
+	cropped_frame = frame[80:500, 0:1080]
+	frame = cropped_frame	
+	blurred = cv2.GaussianBlur(frame, (3, 3), 0)
 	hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
 	# construct a mask for the color "green", then perform
 	# a series of dilations and erosions to remove any small
 	# blobs left in the mask
-	mask = cv2.inRange(hsv, greenLower, greenUpper)
-	mask = cv2.erode(mask, None, iterations=2)
-	mask = cv2.dilate(mask, None, iterations=2)
+	#need different color filter.  
+	lh = cv2.getTrackbarPos('lh', "HSV")
+	ls = cv2.getTrackbarPos('ls', "HSV")
+	lv = cv2.getTrackbarPos('lv', "HSV")
+	uh = cv2.getTrackbarPos('uh', "HSV")
+	hs = cv2.getTrackbarPos('hs', "HSV")
+	hv = cv2.getTrackbarPos('hv', "HSV")
+
+	thresh1 = np.array([lh, ls, lv])
+	thresh2 = np.array([uh, hs, hv])
+	mask = cv2.inRange(hsv, thresh1, thresh2)
+	
+#	mask = cv2.inRange(hsv, greenLower, greenUpper)
+	mask = cv2.erode(mask, None, iterations=1)
+	mask = cv2.dilate(mask, None, iterations=1)
+
+#	cv2.imshow("Mask", mask)
 
 	# find contours in the mask and initialize the current
 	# (x, y) center of the ball
@@ -76,33 +126,37 @@ while True:
 		# find the largest contour in the mask, then use
 		# it to compute the minimum enclosing circle and
 		# centroid
-		c = max(cnts, key=cv2.contourArea)
-		((x, y), radius) = cv2.minEnclosingCircle(c)
-		M = cv2.moments(c)
-		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
-		# only proceed if the radius meets a minimum size
-		if radius > 10:
-			# draw the circle and centroid on the frame,
-			# then update the list of tracked points
-			cv2.circle(frame, (int(x), int(y)), int(radius),
-				(0, 255, 255), 2)
-			cv2.circle(frame, center, 5, (0, 0, 255), -1)
+		for c in cnts:
+#		print(len(cnts))
+#		c = min(cnts, key=cv2.contourArea)
+#		print(c)
+			((x, y), radius) = cv2.minEnclosingCircle(c)
+			M = cv2.moments(c)
+			center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 
-	# update the points queue
-	pts.appendleft(center)
+			# only proceed if the radius meets a minimum size
+			if radius > 0:
+				# draw the circle and centroid on the frame,
+				# then update the list of tracked points
+				cv2.circle(frame, (int(x), int(y)), int(radius),
+					(0, 255, 255), 2)
+				cv2.circle(frame, center, 5, (0, 0, 255), -1)
 
-	# loop over the set of tracked points
-	for i in range(1, len(pts)):
-		# if either of the tracked points are None, ignore
-		# them
-		if pts[i - 1] is None or pts[i] is None:
-			continue
+			# update the points queue
+			pts.appendleft(center)
 
-		# otherwise, compute the thickness of the line and
-		# draw the connecting lines
-		thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
-		cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
+			# loop over the set of tracked points
+			for i in range(1, len(pts)):
+				# if either of the tracked points are None, ignore
+				# them
+				if pts[i - 1] is None or pts[i] is None:
+					continue
+
+				# otherwise, compute the thickness of the line and
+				# draw the connecting lines
+				thickness = int(np.sqrt(args["buffer"] / float(i + 1)) * 2.5)
+				cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
 
 	# show the frame to our screen
 	cv2.imshow("Frame", frame)

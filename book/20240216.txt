@@ -3,3 +3,17 @@ https://github.com/Practical-CV/Color-Based-Ball-Tracking-With-OpenCV/blob/maste
 
 pip install opencv-python
 pip install imutils
+
+
+gitcl clone from repository
+
+add conda to path
+C:\Users\devin\anaconda3\Scripts\
+
+Just an admin issue on windows.  
+conda activate tennis
+have to be running as admin to use conda in VSCode terminal for some reason.  
+
+
+python ./ball_tracking.py --video "c:\\projects\\tennisdetector\\data\\DJI_0139.mp4"
+"C:\projects\tennisdetector\data\DJI_0138.MP4"
