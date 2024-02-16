@@ -1,0 +1,5 @@
+ball tracker start
+https://github.com/Practical-CV/Color-Based-Ball-Tracking-With-OpenCV/blob/master/ball_tracking.py
+
+pip install opencv-python
+pip install imutils
